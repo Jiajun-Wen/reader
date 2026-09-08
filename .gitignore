@@ -1,0 +1,26 @@
+# Dependencies and build output
+node_modules/
+dist/
+
+# Local data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Local credentials and secrets
+.env
+.env.*
+!.env.example
+*.cookie
+*.cookies
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+credentials*.json
+service-account*.json
+
+# Local workspace metadata
+.sporecode/
