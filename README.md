@@ -1,6 +1,6 @@
 # Reader
 
-轻量文字阅读工具：粘贴网站链接，抓取正文，剔除 UI / 广告 / 图片，以纯文字形式展示并保存。目前支持知乎（问题、回答、专栏文章）。
+轻量文字阅读工具：打开即呈现知乎首页推荐流的瀑布流，下滑自动加载新的回答，剔除 UI / 广告 / 图片，以纯文字堆叠展示（图片处显示 `【图片】`）。
 
 ## 使用
 
@@ -9,20 +9,20 @@ npm install
 npm run dev
 ```
 
-浏览器打开 http://localhost:3000 ，粘贴知乎链接后点击「阅读」。
+浏览器打开 http://localhost:3000 ，下滑即可不断加载新的回答。
 
 ## 配置
 
 通过环境变量配置：
 
 - `READER_PORT`：端口，默认 `3000`
-- `READER_DB`：SQLite 数据库路径，默认 `reader.db`
-- `READER_COOKIE`：知乎 Cookie（可选）。知乎对未登录抓取常返回 403，提供 Cookie 后可正常抓取。
+- `READER_COOKIE`：知乎登录 Cookie。推荐流需要登录态（`z_c0`、`d_c0`、`_zap`）。
 - `READER_COOKIE_FILE`：从文件读取 Cookie（适合 Cookie 很长的情况），内容为完整 Cookie 字符串。
+- `READER_MOCK_FEED`：设为 `1` 时使用本地示例数据，方便无 Cookie 时预览瀑布流界面。
 
-## 解决知乎 403
+## 解决知乎 403 / 登录态
 
-未登录抓取知乎时，服务端会因缺少 `d_c0`/`_zap` 等设备 Cookie 返回 403。推荐用登录后的 Cookie：
+推荐流接口需要登录 Cookie。获取方式：
 
 1. 浏览器登录 zhihu.com，按 F12 打开开发者工具。
 2. 切到 Network（网络）面板，刷新页面，点任意一个 `www.zhihu.com` 请求。
@@ -33,13 +33,17 @@ npm run dev
 READER_COOKIE_FILE=reader.cookie npm run dev
 ```
 
-Windows 下等效：
+Windows PowerShell 下等效：
 
 ```powershell
 $env:READER_COOKIE_FILE="reader.cookie"; npm run dev
 ```
 
-只想匿名抓取公开内容时，也可以只复制浏览器里的 `d_c0` 和 `_zap` 两个值拼成 Cookie。
+无 Cookie 时可先用示例数据预览界面：
+
+```bash
+READER_MOCK_FEED=1 npm run dev
+```
 
 ## 命令
 
@@ -52,14 +56,11 @@ $env:READER_COOKIE_FILE="reader.cookie"; npm run dev
 
 ```
 src/
-├── index.ts           入口：装配依赖并启动服务
-├── model/article.ts   数据模型
-├── fetch/fetcher.ts   HTTP 抓取（浏览器 UA、重试）
-├── extract/extractor.ts 正文抽取（@mozilla/readability）
-├── sanitize/sanitizer.ts 纯文字清洗（去图/脚本/广告，统一换行）
-├── adapters/          站点适配器（按 host 分发，当前仅 zhihu）
-├── store/store.ts     SQLite 存取（node:sqlite）
-└── server/            本地 Web 服务与极简文字页面
+├── index.ts           入口：装配 provider 并启动服务
+├── feed/              推荐流：类型、游标、知乎客户端、示例数据
+├── zhihu/sign.ts      知乎 x-zse-96 请求签名
+├── sanitize/sanitizer.ts 纯文字清洗（图片→【图片】、去脚本/广告、统一换行）
+└── server/            本地 Web 服务与瀑布流页面
 ```
 
-新增站点时，实现 `adapters/adapter.ts` 中的 `Adapter` 接口，并在 `adapters/registry.ts` 注册即可。
+推荐流通过 `https://www.zhihu.com/api/v3/feed/topstory/recommend` 获取，分页游标（`session_token` / `after_id`）编码在 `cursor` 参数中，前端用 `IntersectionObserver` 触底自动加载下一页。

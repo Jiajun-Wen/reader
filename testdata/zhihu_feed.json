@@ -1,0 +1,39 @@
+{
+  "data": [
+    {
+      "id": "1001",
+      "type": "feeditem",
+      "target": {
+        "type": "answer",
+        "id": 2001,
+        "author": { "name": "李四" },
+        "question": { "id": 3001, "title": "如何高效学习？" },
+        "content": "<p>第一段：制定计划。</p><figure><img src=\"https://example.com/x.png\" alt=\"学习图\"></figure><p>第二段：坚持执行。</p>",
+        "url": "https://www.zhihu.com/question/3001/answer/2001"
+      }
+    },
+    {
+      "id": "1002",
+      "type": "feeditem",
+      "target": {
+        "type": "article",
+        "id": 4001,
+        "title": "一篇文章标题",
+        "author": { "name": "王五" },
+        "content": "<p>文章正文段落。</p>",
+        "url": "https://zhuanlan.zhihu.com/p/4001"
+      }
+    },
+    {
+      "id": "1003",
+      "type": "feeditem",
+      "target": { "type": "zvideo", "id": 5001, "title": "视频标题" }
+    },
+    {
+      "id": "1004",
+      "type": "ad",
+      "ad": { "id": "ad-1" }
+    }
+  ],
+  "paging": { "is_end": true, "session_token": "sess-token" }
+}

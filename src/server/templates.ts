@@ -1,13 +1,3 @@
-import type { Article } from "../model/article.js";
-
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 const BASE_STYLE = `
   * { box-sizing: border-box; }
   body {
@@ -17,37 +7,19 @@ const BASE_STYLE = `
     background: #fafafa;
     line-height: 1.7;
   }
-  main { max-width: 42rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
-  h1 { font-size: 1.5rem; font-weight: normal; letter-spacing: .02em; }
-  a { color: #1a1a1a; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .bar { display: flex; gap: .5rem; margin: 1.5rem 0; }
-  input[type=url], input[type=text] {
-    flex: 1; padding: .6rem .8rem; font-size: 1rem;
-    border: 1px solid #ccc; border-radius: 2px; background: #fff;
-  }
-  button {
-    padding: .6rem 1.1rem; font-size: 1rem; cursor: pointer;
-    border: 1px solid #1a1a1a; border-radius: 2px; background: #1a1a1a; color: #fff;
-  }
-  .error { color: #b00020; margin: .5rem 0; }
-  ul.articles { list-style: none; padding: 0; margin: 2rem 0 0; }
-  ul.articles li { border-top: 1px solid #e5e5e5; padding: .9rem 0; }
-  ul.articles .meta { color: #777; font-size: .85rem; }
-  article { white-space: pre-wrap; word-wrap: break-word; }
-  .meta { color: #777; font-size: .85rem; margin: .5rem 0 2rem; }
-  .tools { margin-bottom: 1rem; }
-  .tools form { display: inline; }
-  .tools button { padding: .3rem .7rem; font-size: .85rem; background: #fff; color: #1a1a1a; }
+  main { max-width: 42rem; margin: 0 auto; padding: 2rem 1.25rem 6rem; }
+  h1 { font-size: 1.5rem; font-weight: normal; letter-spacing: .02em; margin: 0 0 .3rem; }
+  .subtitle { color: #777; font-size: .9rem; margin: 0; }
+  .card { margin-top: 2.5rem; padding-top: 1.6rem; border-top: 1px solid #e5e5e5; }
+  .card h2 { font-size: 1.12rem; font-weight: normal; margin: 0 0 .4rem; line-height: 1.5; }
+  .card .meta { color: #777; font-size: .85rem; margin-bottom: .9rem; }
+  .card .content { white-space: pre-wrap; word-wrap: break-word; }
+  .card .source { display: inline-block; margin-top: .8rem; font-size: .85rem; color: #1a1a1a; text-decoration: none; }
+  .card .source:hover { text-decoration: underline; }
+  #status { color: #777; margin-top: 2rem; text-align: center; }
 `;
 
-function articleItem(a: Article): string {
-  return `<li><a href="/read/${escapeHtml(a.id)}">${escapeHtml(a.title || a.url)}</a><div class="meta">${escapeHtml(a.author || "未知作者")} · ${escapeHtml(a.createdAt.slice(0, 10))}</div></li>`;
-}
-
-export function indexPage(articles: Article[], error?: string): string {
-  const list = articles.map(articleItem).join("");
-  const errorHtml = error ? `<p class="error">${escapeHtml(error)}</p>` : "";
+export function feedPage(): string {
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -59,47 +31,82 @@ export function indexPage(articles: Article[], error?: string): string {
 <body>
 <main>
   <h1>Reader</h1>
-  <p>粘贴链接，抓取正文，以纯文字阅读。</p>
-  <form class="bar" method="post" action="/fetch">
-    <input type="url" name="url" placeholder="https://zhuanlan.zhihu.com/p/..." required>
-    <button type="submit">阅读</button>
-  </form>
-  ${errorHtml}
-  <ul class="articles">${list}</ul>
+  <p class="subtitle">知乎首页推荐 · 纯文字阅读</p>
+  <div id="feed"></div>
+  <div id="sentinel"></div>
+  <div id="status">加载中…</div>
 </main>
-</body>
-</html>`;
-}
+<script>
+(() => {
+  const feed = document.getElementById("feed");
+  const sentinel = document.getElementById("sentinel");
+  const status = document.getElementById("status");
+  let cursor = null;
+  let loading = false;
+  let ended = false;
 
-export function readerPage(article: Article): string {
-  return `<!doctype html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(article.title)}</title>
-<style>${BASE_STYLE}</style>
-</head>
-<body>
-<main>
-  <div class="tools">
-    <a href="/">← 返回</a>
-    <form method="post" action="/delete/${escapeHtml(article.id)}" onsubmit="return confirm('删除这篇文章？')">
-      <button type="submit">删除</button>
-    </form>
-  </div>
-  <h1>${escapeHtml(article.title)}</h1>
-  <div class="meta">${escapeHtml(article.author || "未知作者")} · ${escapeHtml(article.createdAt)} · <a href="${escapeHtml(article.url)}">原文</a></div>
-  <article>${escapeHtml(article.content)}</article>
-</main>
-</body>
-</html>`;
-}
+  function renderItem(item) {
+    const card = document.createElement("article");
+    card.className = "card";
+    if (item.title) {
+      const title = document.createElement("h2");
+      title.textContent = item.title;
+      card.appendChild(title);
+    }
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = item.author || "未知作者";
+    card.appendChild(meta);
+    const content = document.createElement("div");
+    content.className = "content";
+    content.textContent = item.content;
+    card.appendChild(content);
+    if (item.url) {
+      const source = document.createElement("a");
+      source.className = "source";
+      source.href = item.url;
+      source.target = "_blank";
+      source.rel = "noopener";
+      source.textContent = "查看原文";
+      card.appendChild(source);
+    }
+    return card;
+  }
 
-export function notFoundPage(): string {
-  return `<!doctype html>
-<html lang="zh-CN">
-<head><meta charset="utf-8"><title>未找到</title><style>${BASE_STYLE}</style></head>
-<body><main><h1>未找到</h1><p><a href="/">返回首页</a></p></main></body>
+  async function loadMore() {
+    if (loading || ended) return;
+    loading = true;
+    status.textContent = "加载中…";
+    try {
+      const query = cursor ? "?cursor=" + encodeURIComponent(cursor) : "";
+      const response = await fetch("/api/feed" + query);
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+      for (const item of data.items || []) {
+        feed.appendChild(renderItem(item));
+      }
+      cursor = data.cursor ?? null;
+      if (cursor === null) {
+        ended = true;
+        status.textContent = "已到末尾";
+      } else {
+        status.textContent = "";
+      }
+    } catch (error) {
+      status.textContent = "加载失败：" + error.message;
+    } finally {
+      loading = false;
+    }
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    if (entries.some((entry) => entry.isIntersecting)) loadMore();
+  });
+  observer.observe(sentinel);
+  loadMore();
+})();
+</script>
+</body>
 </html>`;
 }

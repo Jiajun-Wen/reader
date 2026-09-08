@@ -12,9 +12,9 @@ test("移除脚本与样式", () => {
   assert.equal(result, "正文继续结束");
 });
 
-test("图片保留 alt 文字，无 alt 时移除", () => {
-  assert.equal(toPlainText('<div>含 <img src="x" alt="示意图"> 图</div>'), "含 [图片: 示意图] 图");
-  assert.equal(toPlainText('<div>含 <img src="x"> 图</div>'), "含 图");
+test("图片替换为占位符", () => {
+  assert.equal(toPlainText('<div>含 <img src="x" alt="示意图"> 图</div>'), "含 【图片】 图");
+  assert.equal(toPlainText('<p>文字</p><figure><img src="x"><figcaption>说明</figcaption></figure>'), "文字\n【图片】");
 });
 
 test("列表项转为项目符号", () => {

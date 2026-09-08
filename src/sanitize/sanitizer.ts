@@ -7,14 +7,7 @@ export function toPlainText(html: string): string {
 
   $("script, style, noscript, iframe, video, audio, svg, canvas, form, button, input, nav, aside").remove();
 
-  $("img").each((_, el) => {
-    const alt = $(el).attr("alt")?.trim();
-    $(el).replaceWith(alt ? ` [图片: ${alt}] ` : "");
-  });
-  $("picture, figure").each((_, el) => {
-    const alt = $(el).find("img").attr("alt")?.trim();
-    $(el).replaceWith(alt ? ` [图片: ${alt}] ` : "");
-  });
+  $("img, picture, figure").replaceWith("【图片】");
 
   $("br").replaceWith("\n");
 
