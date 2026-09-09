@@ -92,6 +92,27 @@ export function feedPage(): string {
   const feed = document.getElementById("feed");
   const sentinel = document.getElementById("sentinel");
   const status = document.getElementById("status");
+  const SEEN_KEY = "reader.seen";
+  const MAX_SEEN = 500;
+
+  function loadSeen() {
+    try {
+      const raw = localStorage.getItem(SEEN_KEY);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  }
+
+  function saveSeen() {
+    try {
+      localStorage.setItem(SEEN_KEY, JSON.stringify(Array.from(seen).slice(-MAX_SEEN)));
+    } catch {
+      // 存储不可用时忽略，仅影响去重
+    }
+  }
+
+  const seen = loadSeen();
   let cursor = null;
   let loading = false;
   let ended = false;
@@ -124,26 +145,43 @@ export function feedPage(): string {
     return card;
   }
 
+  function appendItems(items) {
+    let appended = 0;
+    for (const item of items || []) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      feed.appendChild(renderItem(item));
+      appended += 1;
+    }
+    if (appended > 0) saveSeen();
+    return appended;
+  }
+
   async function loadMore() {
     if (loading || ended) return;
     loading = true;
     status.textContent = "加载中…";
     try {
-      const query = cursor ? "?cursor=" + encodeURIComponent(cursor) : "";
-      const response = await fetch("/api/feed" + query);
-      if (!response.ok) throw new Error("HTTP " + response.status);
-      const data = await response.json();
-      if (data.error) throw new Error(data.error);
-      for (const item of data.items || []) {
-        feed.appendChild(renderItem(item));
+      // 若本页全是已看过的内容，自动向后翻页，直到出现新内容或到末尾
+      for (let skip = 0; skip < 20; skip += 1) {
+        const query = cursor ? "?cursor=" + encodeURIComponent(cursor) : "";
+        const response = await fetch("/api/feed" + query);
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        const appended = appendItems(data.items);
+        cursor = data.cursor ?? null;
+        if (cursor === null) {
+          ended = true;
+          status.textContent = appended > 0 ? "已到末尾" : "暂无新内容";
+          return;
+        }
+        if (appended > 0) {
+          status.textContent = "";
+          return;
+        }
       }
-      cursor = data.cursor ?? null;
-      if (cursor === null) {
-        ended = true;
-        status.textContent = "已到末尾";
-      } else {
-        status.textContent = "";
-      }
+      status.textContent = "";
     } catch (error) {
       status.textContent = "加载失败：" + error.message;
     } finally {
