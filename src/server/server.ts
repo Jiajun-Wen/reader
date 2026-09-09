@@ -1,9 +1,11 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server as HttpServer } from "node:http";
 import type { FeedProvider } from "../feed/types.js";
+import type { Formatter } from "../format/types.js";
 import { feedPage } from "./templates.js";
 
 export interface ServerOptions {
   provider: FeedProvider;
+  formatter: Formatter;
   port: number;
 }
 
@@ -42,13 +44,17 @@ export class Server {
     const method = req.method ?? "GET";
 
     if (method === "GET" && url.pathname === "/") {
-      return this.html(res, 200, feedPage());
+      return this.html(res, 200, feedPage(this.options.formatter.styles()));
     }
 
     if (method === "GET" && url.pathname === "/api/feed") {
       try {
         const page = await this.options.provider.nextPage(url.searchParams.get("cursor"));
-        return this.json(res, 200, page);
+        const items = page.items.map((item) => ({
+          ...item,
+          html: this.options.formatter.formatItem(item),
+        }));
+        return this.json(res, 200, { items, cursor: page.cursor });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return this.json(res, 502, { error: message });

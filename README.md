@@ -56,11 +56,18 @@ READER_MOCK_FEED=1 npm run dev
 
 ```
 src/
-├── index.ts           入口：装配 provider 并启动服务
-├── feed/              推荐流：类型、游标、知乎客户端、示例数据
+├── index.ts           入口：装配 provider + formatter 并启动服务
+├── feed/              内容流：类型、游标、知乎客户端、示例数据
+├── format/            格式排版：Formatter 接口与纯文字实现
 ├── zhihu/sign.ts      知乎 x-zse-96 请求签名
-├── sanitize/sanitizer.ts 纯文字清洗（图片→【图片】、去脚本/广告、统一换行）
+├── sanitize/sanitizer.ts 内容清洗（图片→【图片】、去脚本/广告、统一换行）
 └── server/            本地 Web 服务与瀑布流页面
 ```
+
+内容流与格式排版已解耦：
+
+- **内容流**由 `feed/types.ts` 的 `FeedProvider` 接口定义，`zhihu.ts`、`mock.ts` 是其实现；换内容源只需替换 provider。
+- **格式排版**由 `format/types.ts` 的 `Formatter` 接口定义，`pureText.ts` 是当前实现；换格式只需替换 formatter（`styles()` 提供样式、`formatItem()` 输出条目 HTML）。
+- 服务端（`server/`）只负责把 provider 产出的数据交给 formatter 渲染，二者互不依赖。
 
 推荐流通过 `https://www.zhihu.com/api/v3/feed/topstory/recommend` 获取，分页游标（`session_token` / `after_id`）编码在 `cursor` 参数中，前端用 `IntersectionObserver` 触底自动加载下一页。

@@ -11,12 +11,6 @@ const BASE_STYLE = `
   main { max-width: 42rem; margin: 0 auto; padding: 2rem 1.25rem 6rem; }
   h1 { font-size: 1.5rem; font-weight: normal; letter-spacing: .02em; margin: 0 0 .3rem; }
   .subtitle { color: #777; font-size: .9rem; margin: 0; }
-  .card { margin-top: 2.5rem; padding-top: 1.6rem; border-top: 1px solid #e5e5e5; }
-  .card h2 { font-size: 1.12rem; font-weight: normal; margin: 0 0 .4rem; line-height: 1.5; }
-  .card .meta { color: #777; font-size: .85rem; margin-bottom: .9rem; }
-  .card .content { white-space: pre-wrap; word-wrap: break-word; font-size: var(--content-size); }
-  .card .source { display: inline-block; margin-top: .8rem; font-size: .85rem; color: #1a1a1a; text-decoration: none; }
-  .card .source:hover { text-decoration: underline; }
   #status { color: #777; margin-top: 2rem; text-align: center; }
 
   .settings-button {
@@ -57,14 +51,15 @@ const BASE_STYLE = `
   .settings-menu .value { font-size: .85rem; color: #777; min-width: 3rem; text-align: right; }
 `;
 
-export function feedPage(): string {
+export function feedPage(formatterStyles: string): string {
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reader</title>
-<style>${BASE_STYLE}</style>
+<style>${BASE_STYLE}
+${formatterStyles}</style>
 </head>
 <body>
 <main>
@@ -117,40 +112,12 @@ export function feedPage(): string {
   let loading = false;
   let ended = false;
 
-  function renderItem(item) {
-    const card = document.createElement("article");
-    card.className = "card";
-    if (item.title) {
-      const title = document.createElement("h2");
-      title.textContent = item.title;
-      card.appendChild(title);
-    }
-    const meta = document.createElement("div");
-    meta.className = "meta";
-    meta.textContent = item.author || "未知作者";
-    card.appendChild(meta);
-    const content = document.createElement("div");
-    content.className = "content";
-    content.textContent = item.content;
-    card.appendChild(content);
-    if (item.url) {
-      const source = document.createElement("a");
-      source.className = "source";
-      source.href = item.url;
-      source.target = "_blank";
-      source.rel = "noopener";
-      source.textContent = "查看原文";
-      card.appendChild(source);
-    }
-    return card;
-  }
-
   function appendItems(items) {
     let appended = 0;
     for (const item of items || []) {
       if (seen.has(item.id)) continue;
       seen.add(item.id);
-      feed.appendChild(renderItem(item));
+      feed.insertAdjacentHTML("beforeend", item.html);
       appended += 1;
     }
     if (appended > 0) saveSeen();

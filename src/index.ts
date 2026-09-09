@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { ZhihuFeedProvider } from "./feed/zhihu.js";
 import { MockFeedProvider } from "./feed/mock.js";
+import { PureTextFormatter } from "./format/pureText.js";
 import { Server } from "./server/server.js";
 
 const port = Number(process.env.READER_PORT ?? 3000);
@@ -11,7 +12,8 @@ const provider =
     ? new MockFeedProvider()
     : new ZhihuFeedProvider({ cookie: cookie ?? "" });
 
-const server = new Server({ provider, port });
+const formatter = new PureTextFormatter();
+const server = new Server({ provider, formatter, port });
 await server.start();
 
 function readCookieFile(path: string | undefined): string | undefined {

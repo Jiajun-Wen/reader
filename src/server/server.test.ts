@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Server } from "./server.js";
 import type { FeedItem, FeedProvider } from "../feed/types.js";
+import { PureTextFormatter } from "../format/pureText.js";
 
 function stubProvider(items: FeedItem[]): FeedProvider {
   return {
@@ -14,8 +15,10 @@ function stubProvider(items: FeedItem[]): FeedProvider {
   };
 }
 
+const formatter = new PureTextFormatter();
+
 test("首页渲染瀑布流页面", async () => {
-  const server = new Server({ provider: stubProvider([]), port: 0 });
+  const server = new Server({ provider: stubProvider([]), formatter, port: 0 });
   const port = await server.start();
   try {
     const response = await fetch(`http://localhost:${port}/`);
@@ -23,14 +26,16 @@ test("首页渲染瀑布流页面", async () => {
     const html = await response.text();
     assert.match(html, /id="feed"/);
     assert.match(html, /IntersectionObserver/);
+    assert.match(html, /\.card /);
   } finally {
     await server.close();
   }
 });
 
-test("feed API 返回分页数据", async () => {
+test("feed API 返回分页数据与渲染后的 HTML", async () => {
   const server = new Server({
-    provider: stubProvider([{ id: "1", type: "answer", title: "标题", author: "作者", content: "正文", url: "" }]),
+    provider: stubProvider([{ id: "1", type: "answer", title: "标题", author: "作者", content: "正文", url: "https://example.com" }]),
+    formatter,
     port: 0,
   });
   const port = await server.start();
@@ -38,6 +43,9 @@ test("feed API 返回分页数据", async () => {
     const first = await (await fetch(`http://localhost:${port}/api/feed`)).json();
     assert.equal(first.items.length, 1);
     assert.equal(first.cursor, "next");
+    assert.match(first.items[0].html, /article class="card"/);
+    assert.match(first.items[0].html, /标题/);
+    assert.match(first.items[0].html, /href="https:\/\/example.com"/);
 
     const second = await (await fetch(`http://localhost:${port}/api/feed?cursor=next`)).json();
     assert.equal(second.items.length, 0);
@@ -54,6 +62,7 @@ test("feed API 出错时返回 502", async () => {
         throw new Error("测试错误");
       },
     },
+    formatter,
     port: 0,
   });
   const port = await server.start();
